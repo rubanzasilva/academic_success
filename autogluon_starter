@@ -1,1 +1,1093 @@
-{"metadata":{"kernelspec":{"language":"python","display_name":"Python 3","name":"python3"},"language_info":{"name":"python","version":"3.10.13","mimetype":"text/x-python","codemirror_mode":{"name":"ipython","version":3},"pygments_lexer":"ipython3","nbconvert_exporter":"python","file_extension":".py"},"kaggle":{"accelerator":"none","dataSources":[{"sourceId":73290,"databundleVersionId":8710574,"sourceType":"competition"}],"dockerImageVersionId":30715,"isInternetEnabled":true,"language":"python","sourceType":"notebook","isGpuEnabled":false}},"nbformat_minor":4,"nbformat":4,"cells":[{"source":"<a href=\"https://www.kaggle.com/code/rubanzasilva/autogluon-starter?scriptVersionId=180906989\" target=\"_blank\"><img align=\"left\" alt=\"Kaggle\" title=\"Open in Kaggle\" src=\"https://kaggle.com/static/images/open-in-kaggle.svg\"></a>","metadata":{},"cell_type":"markdown"},{"cell_type":"code","source":"# This Python 3 environment comes with many helpful analytics libraries installed\n# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n# For example, here's several helpful packages to load\n\nimport numpy as np # linear algebra\nimport pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n\n# Input data files are available in the read-only \"../input/\" directory\n# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n\nimport os\nfor dirname, _, filenames in os.walk('/kaggle/input'):\n    for filename in filenames:\n        print(os.path.join(dirname, filename))\n\n# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session","metadata":{"_uuid":"8f2839f25d086af736a60e9eeb907d3b93b6e0e5","_cell_guid":"b1076dfc-b9ad-4769-8c92-a6c4dae69d19","_kg_hide-output":true,"execution":{"iopub.status.busy":"2024-06-01T09:26:48.019103Z","iopub.execute_input":"2024-06-01T09:26:48.019532Z","iopub.status.idle":"2024-06-01T09:26:48.036704Z","shell.execute_reply.started":"2024-06-01T09:26:48.019497Z","shell.execute_reply":"2024-06-01T09:26:48.035388Z"},"trusted":true},"execution_count":8,"outputs":[{"name":"stdout","text":"/kaggle/input/playground-series-s4e6/sample_submission.csv\n/kaggle/input/playground-series-s4e6/train.csv\n/kaggle/input/playground-series-s4e6/test.csv\n/kaggle/input/academic-success-dataset/data.csv\n","output_type":"stream"}]},{"cell_type":"code","source":"!pip install -q -U autogluon.tabular","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:18:41.594834Z","iopub.execute_input":"2024-06-01T09:18:41.595446Z","iopub.status.idle":"2024-06-01T09:19:13.699657Z","shell.execute_reply.started":"2024-06-01T09:18:41.595408Z","shell.execute_reply":"2024-06-01T09:19:13.698163Z"},"_kg_hide-output":true,"trusted":true},"execution_count":3,"outputs":[{"name":"stdout","text":"\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\n\u001b[0m\u001b[31mERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.\naiobotocore 2.13.0 requires aiohttp<4.0.0,>=3.9.2, which is not installed.\ns3fs 2024.3.1 requires aiohttp!=4.0.0a0,!=4.0.0a1, which is not installed.\naiobotocore 2.13.0 requires botocore<1.34.107,>=1.34.70, but you have botocore 1.29.165 which is incompatible.\nspopt 0.6.0 requires shapely>=2.0.1, but you have shapely 1.8.5.post1 which is incompatible.\u001b[0m\u001b[31m\n\u001b[0m","output_type":"stream"}]},{"cell_type":"code","source":"#!pip install autogluon","metadata":{"scrolled":true,"trusted":true},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"!pip install catboost\n!pip install optuna\n!pip install optuna_distributed\n!pip install openfe","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:21:25.684077Z","iopub.execute_input":"2024-06-01T09:21:25.684841Z","iopub.status.idle":"2024-06-01T09:22:28.818341Z","shell.execute_reply.started":"2024-06-01T09:21:25.684803Z","shell.execute_reply":"2024-06-01T09:22:28.816653Z"},"scrolled":true,"_kg_hide-output":true,"trusted":true},"execution_count":5,"outputs":[{"name":"stdout","text":"Requirement already satisfied: catboost in /opt/conda/lib/python3.10/site-packages (1.2.5)\nRequirement already satisfied: graphviz in /opt/conda/lib/python3.10/site-packages (from catboost) (0.20.3)\nRequirement already satisfied: matplotlib in /opt/conda/lib/python3.10/site-packages (from catboost) (3.7.5)\nRequirement already satisfied: numpy>=1.16.0 in /opt/conda/lib/python3.10/site-packages (from catboost) (1.26.4)\nRequirement already satisfied: pandas>=0.24 in /opt/conda/lib/python3.10/site-packages (from catboost) (2.2.2)\nRequirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from catboost) (1.11.4)\nRequirement already satisfied: plotly in /opt/conda/lib/python3.10/site-packages (from catboost) (5.18.0)\nRequirement already satisfied: six in /opt/conda/lib/python3.10/site-packages (from catboost) (1.16.0)\nRequirement already satisfied: python-dateutil>=2.8.2 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2.9.0.post0)\nRequirement already satisfied: pytz>=2020.1 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2023.3.post1)\nRequirement already satisfied: tzdata>=2022.7 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2023.4)\nRequirement already satisfied: contourpy>=1.0.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (1.2.0)\nRequirement already satisfied: cycler>=0.10 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (0.12.1)\nRequirement already satisfied: fonttools>=4.22.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (4.47.0)\nRequirement already satisfied: kiwisolver>=1.0.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (1.4.5)\nRequirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (21.3)\nRequirement already satisfied: pillow>=6.2.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (9.5.0)\nRequirement already satisfied: pyparsing>=2.3.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (3.1.1)\nRequirement already satisfied: tenacity>=6.2.0 in /opt/conda/lib/python3.10/site-packages (from plotly->catboost) (8.2.3)\n\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\n\u001b[0mRequirement already satisfied: optuna in /opt/conda/lib/python3.10/site-packages (3.6.1)\nRequirement already satisfied: alembic>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (1.13.1)\nRequirement already satisfied: colorlog in /opt/conda/lib/python3.10/site-packages (from optuna) (6.8.2)\nRequirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from optuna) (1.26.4)\nRequirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (21.3)\nRequirement already satisfied: sqlalchemy>=1.3.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (2.0.25)\nRequirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from optuna) (4.66.4)\nRequirement already satisfied: PyYAML in /opt/conda/lib/python3.10/site-packages (from optuna) (6.0.1)\nRequirement already satisfied: Mako in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna) (1.3.5)\nRequirement already satisfied: typing-extensions>=4 in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna) (4.9.0)\nRequirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging>=20.0->optuna) (3.1.1)\nRequirement already satisfied: greenlet!=0.4.17 in /opt/conda/lib/python3.10/site-packages (from sqlalchemy>=1.3.0->optuna) (3.0.3)\nRequirement already satisfied: MarkupSafe>=0.9.2 in /opt/conda/lib/python3.10/site-packages (from Mako->alembic>=1.5.0->optuna) (2.1.3)\n\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\n\u001b[0mCollecting optuna_distributed\n  Downloading optuna_distributed-0.6.2-py3-none-any.whl.metadata (5.1 kB)\nRequirement already satisfied: optuna>=3.1.0 in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (3.6.1)\nRequirement already satisfied: dask[distributed] in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (2024.5.1)\nRequirement already satisfied: rich in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (13.7.0)\nRequirement already satisfied: alembic>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (1.13.1)\nRequirement already satisfied: colorlog in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (6.8.2)\nRequirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (1.26.4)\nRequirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (21.3)\nRequirement already satisfied: sqlalchemy>=1.3.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (2.0.25)\nRequirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (4.66.4)\nRequirement already satisfied: PyYAML in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (6.0.1)\nRequirement already satisfied: click>=8.1 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (8.1.7)\nRequirement already satisfied: cloudpickle>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (2.2.1)\nRequirement already satisfied: fsspec>=2021.09.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (2024.3.1)\nRequirement already satisfied: partd>=1.2.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (1.4.2)\nRequirement already satisfied: toolz>=0.10.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (0.12.1)\nRequirement already satisfied: importlib-metadata>=4.13.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (6.11.0)\nCollecting distributed==2024.5.1 (from dask[distributed]->optuna_distributed)\n  Downloading distributed-2024.5.1-py3-none-any.whl.metadata (3.4 kB)\nRequirement already satisfied: jinja2>=2.10.3 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (3.1.2)\nRequirement already satisfied: locket>=1.0.0 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.0.0)\nRequirement already satisfied: msgpack>=1.0.0 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.0.7)\nRequirement already satisfied: psutil>=5.7.2 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (5.9.3)\nCollecting sortedcontainers>=2.0.5 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\n  Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)\nCollecting tblib>=1.6.0 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\n  Downloading tblib-3.0.0-py3-none-any.whl.metadata (25 kB)\nRequirement already satisfied: tornado>=6.0.4 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (6.3.3)\nRequirement already satisfied: urllib3>=1.24.3 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.26.18)\nCollecting zict>=3.0.0 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\n  Downloading zict-3.0.0-py2.py3-none-any.whl.metadata (899 bytes)\nRequirement already satisfied: markdown-it-py>=2.2.0 in /opt/conda/lib/python3.10/site-packages (from rich->optuna_distributed) (3.0.0)\nRequirement already satisfied: pygments<3.0.0,>=2.13.0 in /opt/conda/lib/python3.10/site-packages (from rich->optuna_distributed) (2.17.2)\nRequirement already satisfied: Mako in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna>=3.1.0->optuna_distributed) (1.3.5)\nRequirement already satisfied: typing-extensions>=4 in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna>=3.1.0->optuna_distributed) (4.9.0)\nRequirement already satisfied: zipp>=0.5 in /opt/conda/lib/python3.10/site-packages (from importlib-metadata>=4.13.0->dask[distributed]->optuna_distributed) (3.17.0)\nRequirement already satisfied: mdurl~=0.1 in /opt/conda/lib/python3.10/site-packages (from markdown-it-py>=2.2.0->rich->optuna_distributed) (0.1.2)\nRequirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging>=20.0->optuna>=3.1.0->optuna_distributed) (3.1.1)\nRequirement already satisfied: greenlet!=0.4.17 in /opt/conda/lib/python3.10/site-packages (from sqlalchemy>=1.3.0->optuna>=3.1.0->optuna_distributed) (3.0.3)\nRequirement already satisfied: MarkupSafe>=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2>=2.10.3->distributed==2024.5.1->dask[distributed]->optuna_distributed) (2.1.3)\nDownloading optuna_distributed-0.6.2-py3-none-any.whl (30 kB)\nDownloading distributed-2024.5.1-py3-none-any.whl (1.0 MB)\n\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/1.0 MB\u001b[0m \u001b[31m25.3 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m00:01\u001b[0m\n\u001b[?25hDownloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)\nDownloading tblib-3.0.0-py3-none-any.whl (12 kB)\nDownloading zict-3.0.0-py2.py3-none-any.whl (43 kB)\n\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m43.3/43.3 kB\u001b[0m \u001b[31m1.6 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\n\u001b[?25h\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\n\u001b[0mInstalling collected packages: sortedcontainers, zict, tblib, distributed, optuna_distributed\nSuccessfully installed distributed-2024.5.1 optuna_distributed-0.6.2 sortedcontainers-2.4.0 tblib-3.0.0 zict-3.0.0\nCollecting openfe\n  Downloading openfe-0.0.12-py3-none-any.whl.metadata (667 bytes)\nRequirement already satisfied: numpy>=1.19.3 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.26.4)\nRequirement already satisfied: pandas>=1.1.5 in /opt/conda/lib/python3.10/site-packages (from openfe) (2.2.2)\nRequirement already satisfied: scikit-learn>=0.24.2 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.4.0)\nRequirement already satisfied: lightgbm>=3.3.2 in /opt/conda/lib/python3.10/site-packages (from openfe) (4.2.0)\nRequirement already satisfied: scipy>=1.5.4 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.11.4)\nRequirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from openfe) (4.66.4)\nRequirement already satisfied: pyarrow in /opt/conda/lib/python3.10/site-packages (from openfe) (16.1.0)\nRequirement already satisfied: python-dateutil>=2.8.2 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2.9.0.post0)\nRequirement already satisfied: pytz>=2020.1 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2023.3.post1)\nRequirement already satisfied: tzdata>=2022.7 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2023.4)\nRequirement already satisfied: joblib>=1.2.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn>=0.24.2->openfe) (1.4.2)\nRequirement already satisfied: threadpoolctl>=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn>=0.24.2->openfe) (3.2.0)\nRequirement already satisfied: six>=1.5 in /opt/conda/lib/python3.10/site-packages (from python-dateutil>=2.8.2->pandas>=1.1.5->openfe) (1.16.0)\nDownloading openfe-0.0.12-py3-none-any.whl (21 kB)\n\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\n\u001b[0mInstalling collected packages: openfe\nSuccessfully installed openfe-0.0.12\n","output_type":"stream"}]},{"cell_type":"code","source":"from fastai.tabular.all import *\nimport pandas as pd\nimport matplotlib.pyplot as plt\nimport seaborn as sns\nimport numpy as np\nfrom numpy import random\n\nfrom fastai.imports import *\nnp.set_printoptions(linewidth=130)\n\n\nfrom pathlib import Path\nimport os\n\n\nfrom sklearn.ensemble import RandomForestRegressor,RandomForestClassifier\nfrom sklearn.metrics import roc_auc_score\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.metrics import mean_absolute_error,r2_score\n#from sklearn.metrics import root_mean_squared_error\n\nimport xgboost as xgb\nfrom xgboost import plot_importance\n\nimport lightgbm as lgb\n\nfrom catboost import CatBoostClassifier,CatBoostRegressor,Pool, metrics, cv\n\nfrom ipywidgets import interact\n\n\nmatplotlib.rc('image', cmap='Greys')\n\n#from fastkaggle import setup_comp\nimport optuna\nimport optuna_distributed\n\nfrom autogluon.tabular import TabularDataset, TabularPredictor","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:26:36.70727Z","iopub.execute_input":"2024-06-01T09:26:36.707702Z","iopub.status.idle":"2024-06-01T09:26:36.991313Z","shell.execute_reply.started":"2024-06-01T09:26:36.707666Z","shell.execute_reply":"2024-06-01T09:26:36.990043Z"},"trusted":true},"execution_count":7,"outputs":[]},{"cell_type":"markdown","source":"Read In Datasets","metadata":{}},{"cell_type":"code","source":"!ls /kaggle/input/playground-series-s4e6","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:29:17.832747Z","iopub.execute_input":"2024-06-01T09:29:17.833255Z","iopub.status.idle":"2024-06-01T09:29:19.018041Z","shell.execute_reply.started":"2024-06-01T09:29:17.833218Z","shell.execute_reply":"2024-06-01T09:29:19.016316Z"},"trusted":true},"execution_count":9,"outputs":[{"name":"stdout","text":"sample_submission.csv  test.csv  train.csv\n","output_type":"stream"}]},{"cell_type":"code","source":"path = Path('/kaggle/input/playground-series-s4e6/')\npath","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:29:26.814757Z","iopub.execute_input":"2024-06-01T09:29:26.815949Z","iopub.status.idle":"2024-06-01T09:29:26.826121Z","shell.execute_reply.started":"2024-06-01T09:29:26.815902Z","shell.execute_reply":"2024-06-01T09:29:26.824702Z"},"trusted":true},"execution_count":10,"outputs":[{"execution_count":10,"output_type":"execute_result","data":{"text/plain":"Path('/kaggle/input/playground-series-s4e6')"},"metadata":{}}]},{"cell_type":"code","source":"!ls /kaggle/input/academic-success-dataset","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:30:08.986601Z","iopub.execute_input":"2024-06-01T09:30:08.9871Z","iopub.status.idle":"2024-06-01T09:30:10.125468Z","shell.execute_reply.started":"2024-06-01T09:30:08.987061Z","shell.execute_reply":"2024-06-01T09:30:10.123941Z"},"trusted":true},"execution_count":13,"outputs":[{"name":"stdout","text":"data.csv\n","output_type":"stream"}]},{"cell_type":"code","source":"train_df = pd.read_csv(path/'train.csv',index_col='id')\ntest_df = pd.read_csv(path/'test.csv',index_col='id')\nsub_df = pd.read_csv(path/'sample_submission.csv',index_col='id')\noriginal_df = pd.read_csv('/kaggle/input/academic-success-dataset/data.csv')","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:30:20.403678Z","iopub.execute_input":"2024-06-01T09:30:20.404979Z","iopub.status.idle":"2024-06-01T09:30:21.18707Z","shell.execute_reply.started":"2024-06-01T09:30:20.404932Z","shell.execute_reply":"2024-06-01T09:30:21.185877Z"},"trusted":true},"execution_count":14,"outputs":[]},{"cell_type":"code","source":"train_final = pd.concat([train_df,original_df], axis=0)\n#test_final = pd.concat([test_df,original_df.drop('Target')],axis=0)\n#train_final.shape,test_final.shape","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:30:49.447884Z","iopub.execute_input":"2024-06-01T09:30:49.448313Z","iopub.status.idle":"2024-06-01T09:30:49.468953Z","shell.execute_reply.started":"2024-06-01T09:30:49.448281Z","shell.execute_reply":"2024-06-01T09:30:49.467574Z"},"trusted":true},"execution_count":17,"outputs":[]},{"cell_type":"markdown","source":"# AutoGluon Baseline","metadata":{}},{"cell_type":"code","source":"%%time\npredictor = TabularPredictor(label='Target').fit(train_data=train_df)","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:31:42.282813Z","iopub.execute_input":"2024-06-01T09:31:42.284023Z","iopub.status.idle":"2024-06-01T09:37:53.094671Z","shell.execute_reply.started":"2024-06-01T09:31:42.283967Z","shell.execute_reply":"2024-06-01T09:37:53.093404Z"},"scrolled":true,"_kg_hide-output":true,"trusted":true},"execution_count":18,"outputs":[{"name":"stderr","text":"No path specified. Models will be saved in: \"AutogluonModels/ag-20240601_093142\"\nNo presets specified! To achieve strong results with AutoGluon, it is recommended to use the available presets.\n\tRecommended Presets (For more details refer to https://auto.gluon.ai/stable/tutorials/tabular/tabular-essentials.html#presets):\n\tpresets='best_quality'   : Maximize accuracy. Default time_limit=3600.\n\tpresets='high_quality'   : Strong accuracy with fast inference speed. Default time_limit=3600.\n\tpresets='good_quality'   : Good accuracy with very fast inference speed. Default time_limit=3600.\n\tpresets='medium_quality' : Fast training time, ideal for initial prototyping.\nBeginning AutoGluon training ...\nAutoGluon will save models to \"AutogluonModels/ag-20240601_093142\"\n=================== System Info ===================\nAutoGluon Version:  1.1.0\nPython Version:     3.10.13\nOperating System:   Linux\nPlatform Machine:   x86_64\nPlatform Version:   #1 SMP Tue Dec 19 13:14:11 UTC 2023\nCPU Count:          4\nMemory Avail:       29.06 GB / 31.36 GB (92.7%)\nDisk Space Avail:   19.50 GB / 19.52 GB (99.9%)\n===================================================\nTrain Data Rows:    76518\nTrain Data Columns: 36\nLabel Column:       Target\nAutoGluon infers your prediction problem is: 'multiclass' (because dtype of label-column == object).\n\t3 unique label values:  ['Graduate', 'Dropout', 'Enrolled']\n\tIf 'multiclass' is not the correct problem_type, please manually specify the problem_type parameter during predictor init (You may specify problem_type as one of: ['binary', 'multiclass', 'regression'])\nProblem Type:       multiclass\nPreprocessing data ...\nTrain Data Class Count: 3\nUsing Feature Generators to preprocess the data ...\nFitting AutoMLPipelineFeatureGenerator...\n\tAvailable Memory:                    29750.96 MB\n\tTrain Data (Original)  Memory Usage: 21.02 MB (0.1% of available memory)\n\tInferring data type of each feature based on column values. Set feature_metadata_in to manually specify special dtypes of the features.\n\tStage 1 Generators:\n\t\tFitting AsTypeFeatureGenerator...\n\t\t\tNote: Converting 8 features to boolean dtype as they only contain 2 unique values.\n\tStage 2 Generators:\n\t\tFitting FillNaFeatureGenerator...\n\tStage 3 Generators:\n\t\tFitting IdentityFeatureGenerator...\n\tStage 4 Generators:\n\t\tFitting DropUniqueFeatureGenerator...\n\tStage 5 Generators:\n\t\tFitting DropDuplicatesFeatureGenerator...\n\tTypes of features in original data (raw dtype, special dtypes):\n\t\t('float', []) :  7 | ['Previous qualification (grade)', 'Admission grade', 'Curricular units 1st sem (grade)', 'Curricular units 2nd sem (grade)', 'Unemployment rate', ...]\n\t\t('int', [])   : 29 | ['Marital status', 'Application mode', 'Application order', 'Course', 'Daytime/evening attendance', ...]\n\tTypes of features in processed data (raw dtype, special dtypes):\n\t\t('float', [])     :  7 | ['Previous qualification (grade)', 'Admission grade', 'Curricular units 1st sem (grade)', 'Curricular units 2nd sem (grade)', 'Unemployment rate', ...]\n\t\t('int', [])       : 21 | ['Marital status', 'Application mode', 'Application order', 'Course', 'Previous qualification', ...]\n\t\t('int', ['bool']) :  8 | ['Daytime/evening attendance', 'Displaced', 'Educational special needs', 'Debtor', 'Tuition fees up to date', ...]\n\t0.3s = Fit runtime\n\t36 features in original data used to generate 36 features in processed data.\n\tTrain Data (Processed) Memory Usage: 16.93 MB (0.1% of available memory)\nData preprocessing and feature engineering runtime = 0.54s ...\nAutoGluon will gauge predictive performance using evaluation metric: 'accuracy'\n\tTo change this, specify the eval_metric parameter of Predictor()\nAutomatically generating train/validation split with holdout_frac=0.03267205102067487, Train Rows: 74018, Val Rows: 2500\nUser-specified model hyperparameters to be fit:\n{\n\t'NN_TORCH': {},\n\t'GBM': [{'extra_trees': True, 'ag_args': {'name_suffix': 'XT'}}, {}, 'GBMLarge'],\n\t'CAT': {},\n\t'XGB': {},\n\t'FASTAI': {},\n\t'RF': [{'criterion': 'gini', 'ag_args': {'name_suffix': 'Gini', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'entropy', 'ag_args': {'name_suffix': 'Entr', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'squared_error', 'ag_args': {'name_suffix': 'MSE', 'problem_types': ['regression', 'quantile']}}],\n\t'XT': [{'criterion': 'gini', 'ag_args': {'name_suffix': 'Gini', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'entropy', 'ag_args': {'name_suffix': 'Entr', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'squared_error', 'ag_args': {'name_suffix': 'MSE', 'problem_types': ['regression', 'quantile']}}],\n\t'KNN': [{'weights': 'uniform', 'ag_args': {'name_suffix': 'Unif'}}, {'weights': 'distance', 'ag_args': {'name_suffix': 'Dist'}}],\n}\nFitting 13 L1 models ...\nFitting model: KNeighborsUnif ...\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\nINFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.fit: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: fallback to original Scikit-learn\nINFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.predict_proba: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n\t0.7172\t = Validation score   (accuracy)\n\t0.69s\t = Training   runtime\n\t0.31s\t = Validation runtime\nFitting model: KNeighborsDist ...\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\nINFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.fit: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: fallback to original Scikit-learn\nINFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.predict_proba: running accelerated version on CPU\nINFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n\t0.7068\t = Validation score   (accuracy)\n\t0.07s\t = Training   runtime\n\t0.29s\t = Validation runtime\nFitting model: NeuralNetFastAI ...\n\t0.8248\t = Validation score   (accuracy)\n\t108.21s\t = Training   runtime\n\t0.06s\t = Validation runtime\nFitting model: LightGBMXT ...\n\t0.8272\t = Validation score   (accuracy)\n\t9.15s\t = Training   runtime\n\t0.05s\t = Validation runtime\nFitting model: LightGBM ...\n\t0.8308\t = Validation score   (accuracy)\n\t10.8s\t = Training   runtime\n\t0.08s\t = Validation runtime\nFitting model: RandomForestGini ...\n\t0.826\t = Validation score   (accuracy)\n\t31.05s\t = Training   runtime\n\t0.23s\t = Validation runtime\nFitting model: RandomForestEntr ...\n\t0.8244\t = Validation score   (accuracy)\n\t32.16s\t = Training   runtime\n\t0.2s\t = Validation runtime\nFitting model: CatBoost ...\n\t0.8276\t = Validation score   (accuracy)\n\t29.51s\t = Training   runtime\n\t0.01s\t = Validation runtime\nFitting model: ExtraTreesGini ...\n\t0.8216\t = Validation score   (accuracy)\n\t18.57s\t = Training   runtime\n\t0.19s\t = Validation runtime\nFitting model: ExtraTreesEntr ...\n\t0.822\t = Validation score   (accuracy)\n\t23.19s\t = Training   runtime\n\t0.18s\t = Validation runtime\nFitting model: XGBoost ...\n\t0.8296\t = Validation score   (accuracy)\n\t4.57s\t = Training   runtime\n\t0.03s\t = Validation runtime\nFitting model: NeuralNetTorch ...\n\t0.8228\t = Validation score   (accuracy)\n\t80.76s\t = Training   runtime\n\t0.03s\t = Validation runtime\nFitting model: LightGBMLarge ...\n\t0.8224\t = Validation score   (accuracy)\n\t7.6s\t = Training   runtime\n\t0.02s\t = Validation runtime\nFitting model: WeightedEnsemble_L2 ...\n\tEnsemble Weights: {'LightGBM': 0.833, 'ExtraTreesGini': 0.167}\n\t0.8312\t = Validation score   (accuracy)\n\t0.31s\t = Training   runtime\n\t0.0s\t = Validation runtime\nAutoGluon training complete, total runtime = 370.33s ... Best model: \"WeightedEnsemble_L2\"\nTabularPredictor saved. To load, use: predictor = TabularPredictor.load(\"AutogluonModels/ag-20240601_093142\")\n","output_type":"stream"},{"name":"stdout","text":"CPU times: user 13min 43s, sys: 21.4 s, total: 14min 5s\nWall time: 6min 10s\n","output_type":"stream"}]},{"cell_type":"code","source":"%%time\npredictions = predictor.predict(test_df)","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:37:53.097155Z","iopub.execute_input":"2024-06-01T09:37:53.098072Z","iopub.status.idle":"2024-06-01T09:37:58.630136Z","shell.execute_reply.started":"2024-06-01T09:37:53.098034Z","shell.execute_reply":"2024-06-01T09:37:58.628574Z"},"trusted":true},"execution_count":19,"outputs":[]},{"cell_type":"code","source":"predictions.shape","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:37:58.631685Z","iopub.execute_input":"2024-06-01T09:37:58.632097Z","iopub.status.idle":"2024-06-01T09:37:58.64019Z","shell.execute_reply.started":"2024-06-01T09:37:58.632062Z","shell.execute_reply":"2024-06-01T09:37:58.638937Z"},"trusted":true},"execution_count":20,"outputs":[{"execution_count":20,"output_type":"execute_result","data":{"text/plain":"(51012,)"},"metadata":{}}]},{"cell_type":"code","source":"%%time\npredictor.evaluate(train_df)","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:37:58.64341Z","iopub.execute_input":"2024-06-01T09:37:58.643936Z","iopub.status.idle":"2024-06-01T09:38:05.61519Z","shell.execute_reply.started":"2024-06-01T09:37:58.643892Z","shell.execute_reply":"2024-06-01T09:38:05.613854Z"},"trusted":true},"execution_count":21,"outputs":[{"execution_count":21,"output_type":"execute_result","data":{"text/plain":"{'accuracy': 0.8688151807417862,\n 'balanced_accuracy': 0.8343605656028368,\n 'mcc': 0.7901187688773824}"},"metadata":{}}]},{"cell_type":"code","source":"%%time\n#predictor.evaluate(test_df)","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:45:01.78176Z","iopub.execute_input":"2024-06-01T09:45:01.782983Z","iopub.status.idle":"2024-06-01T09:45:01.789462Z","shell.execute_reply.started":"2024-06-01T09:45:01.782942Z","shell.execute_reply":"2024-06-01T09:45:01.788217Z"},"trusted":true},"execution_count":23,"outputs":[{"name":"stdout","text":"CPU times: user 4 µs, sys: 0 ns, total: 4 µs\nWall time: 9.78 µs\n","output_type":"stream"}]},{"cell_type":"code","source":"%%time\n#predictor.leaderboard(test_data)","metadata":{},"execution_count":null,"outputs":[]},{"cell_type":"code","source":"test_df['Target'] = predictions\ntest_df.to_csv('submission.csv', columns=['Target'], index=True)\n\nsubmission = pd.read_csv('submission.csv')\nsubmission.head()","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:45:12.373626Z","iopub.execute_input":"2024-06-01T09:45:12.374087Z","iopub.status.idle":"2024-06-01T09:45:12.506904Z","shell.execute_reply.started":"2024-06-01T09:45:12.374051Z","shell.execute_reply":"2024-06-01T09:45:12.50556Z"},"trusted":true},"execution_count":24,"outputs":[{"execution_count":24,"output_type":"execute_result","data":{"text/plain":"      id    Target\n0  76518   Dropout\n1  76519  Graduate\n2  76520  Graduate\n3  76521  Enrolled\n4  76522  Enrolled","text/html":"<div>\n<style scoped>\n    .dataframe tbody tr th:only-of-type {\n        vertical-align: middle;\n    }\n\n    .dataframe tbody tr th {\n        vertical-align: top;\n    }\n\n    .dataframe thead th {\n        text-align: right;\n    }\n</style>\n<table border=\"1\" class=\"dataframe\">\n  <thead>\n    <tr style=\"text-align: right;\">\n      <th></th>\n      <th>id</th>\n      <th>Target</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <th>0</th>\n      <td>76518</td>\n      <td>Dropout</td>\n    </tr>\n    <tr>\n      <th>1</th>\n      <td>76519</td>\n      <td>Graduate</td>\n    </tr>\n    <tr>\n      <th>2</th>\n      <td>76520</td>\n      <td>Graduate</td>\n    </tr>\n    <tr>\n      <th>3</th>\n      <td>76521</td>\n      <td>Enrolled</td>\n    </tr>\n    <tr>\n      <th>4</th>\n      <td>76522</td>\n      <td>Enrolled</td>\n    </tr>\n  </tbody>\n</table>\n</div>"},"metadata":{}}]},{"cell_type":"code","source":"!ls","metadata":{"execution":{"iopub.status.busy":"2024-06-01T09:45:17.734028Z","iopub.execute_input":"2024-06-01T09:45:17.734568Z","iopub.status.idle":"2024-06-01T09:45:18.911198Z","shell.execute_reply.started":"2024-06-01T09:45:17.734523Z","shell.execute_reply":"2024-06-01T09:45:18.909643Z"},"trusted":true},"execution_count":25,"outputs":[{"name":"stdout","text":"AutogluonModels  submission.csv\n","output_type":"stream"}]},{"cell_type":"code","source":"","metadata":{},"execution_count":null,"outputs":[]}]}
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "47a0be07",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_kg_hide-output": true,
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2024-06-01T09:59:49.222779Z",
+     "iopub.status.busy": "2024-06-01T09:59:49.222359Z",
+     "iopub.status.idle": "2024-06-01T09:59:50.251803Z",
+     "shell.execute_reply": "2024-06-01T09:59:50.250053Z"
+    },
+    "papermill": {
+     "duration": 1.042601,
+     "end_time": "2024-06-01T09:59:50.255018",
+     "exception": false,
+     "start_time": "2024-06-01T09:59:49.212417",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/playground-series-s4e6/sample_submission.csv\n",
+      "/kaggle/input/playground-series-s4e6/train.csv\n",
+      "/kaggle/input/playground-series-s4e6/test.csv\n",
+      "/kaggle/input/academic-success-dataset/data.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "# This Python 3 environment comes with many helpful analytics libraries installed\n",
+    "# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python\n",
+    "# For example, here's several helpful packages to load\n",
+    "\n",
+    "import numpy as np # linear algebra\n",
+    "import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)\n",
+    "\n",
+    "# Input data files are available in the read-only \"../input/\" directory\n",
+    "# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory\n",
+    "\n",
+    "import os\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))\n",
+    "\n",
+    "# You can write up to 20GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using \"Save & Run All\" \n",
+    "# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "b044f7f2",
+   "metadata": {
+    "_kg_hide-output": true,
+    "execution": {
+     "iopub.execute_input": "2024-06-01T09:59:50.273936Z",
+     "iopub.status.busy": "2024-06-01T09:59:50.273345Z",
+     "iopub.status.idle": "2024-06-01T10:00:24.967902Z",
+     "shell.execute_reply": "2024-06-01T10:00:24.965968Z"
+    },
+    "papermill": {
+     "duration": 34.707986,
+     "end_time": "2024-06-01T10:00:24.971628",
+     "exception": false,
+     "start_time": "2024-06-01T09:59:50.263642",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\r\n",
+      "\u001b[0m\u001b[31mERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.\r\n",
+      "aiobotocore 2.13.0 requires aiohttp<4.0.0,>=3.9.2, which is not installed.\r\n",
+      "s3fs 2024.3.1 requires aiohttp!=4.0.0a0,!=4.0.0a1, which is not installed.\r\n",
+      "aiobotocore 2.13.0 requires botocore<1.34.107,>=1.34.70, but you have botocore 1.29.165 which is incompatible.\r\n",
+      "spopt 0.6.0 requires shapely>=2.0.1, but you have shapely 1.8.5.post1 which is incompatible.\u001b[0m\u001b[31m\r\n",
+      "\u001b[0m"
+     ]
+    }
+   ],
+   "source": [
+    "!pip install -q -U autogluon.tabular"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "3f6f289e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:00:24.992027Z",
+     "iopub.status.busy": "2024-06-01T10:00:24.991469Z",
+     "iopub.status.idle": "2024-06-01T10:00:24.997532Z",
+     "shell.execute_reply": "2024-06-01T10:00:24.995955Z"
+    },
+    "papermill": {
+     "duration": 0.020564,
+     "end_time": "2024-06-01T10:00:25.001226",
+     "exception": false,
+     "start_time": "2024-06-01T10:00:24.980662",
+     "status": "completed"
+    },
+    "scrolled": true,
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "#!pip install autogluon"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "7b68a892",
+   "metadata": {
+    "_kg_hide-output": true,
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:00:25.020859Z",
+     "iopub.status.busy": "2024-06-01T10:00:25.019944Z",
+     "iopub.status.idle": "2024-06-01T10:01:29.899429Z",
+     "shell.execute_reply": "2024-06-01T10:01:29.897928Z"
+    },
+    "papermill": {
+     "duration": 64.893054,
+     "end_time": "2024-06-01T10:01:29.903120",
+     "exception": false,
+     "start_time": "2024-06-01T10:00:25.010066",
+     "status": "completed"
+    },
+    "scrolled": true,
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Requirement already satisfied: catboost in /opt/conda/lib/python3.10/site-packages (1.2.5)\r\n",
+      "Requirement already satisfied: graphviz in /opt/conda/lib/python3.10/site-packages (from catboost) (0.20.3)\r\n",
+      "Requirement already satisfied: matplotlib in /opt/conda/lib/python3.10/site-packages (from catboost) (3.7.5)\r\n",
+      "Requirement already satisfied: numpy>=1.16.0 in /opt/conda/lib/python3.10/site-packages (from catboost) (1.26.4)\r\n",
+      "Requirement already satisfied: pandas>=0.24 in /opt/conda/lib/python3.10/site-packages (from catboost) (2.2.2)\r\n",
+      "Requirement already satisfied: scipy in /opt/conda/lib/python3.10/site-packages (from catboost) (1.11.4)\r\n",
+      "Requirement already satisfied: plotly in /opt/conda/lib/python3.10/site-packages (from catboost) (5.18.0)\r\n",
+      "Requirement already satisfied: six in /opt/conda/lib/python3.10/site-packages (from catboost) (1.16.0)\r\n",
+      "Requirement already satisfied: python-dateutil>=2.8.2 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2.9.0.post0)\r\n",
+      "Requirement already satisfied: pytz>=2020.1 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2023.3.post1)\r\n",
+      "Requirement already satisfied: tzdata>=2022.7 in /opt/conda/lib/python3.10/site-packages (from pandas>=0.24->catboost) (2023.4)\r\n",
+      "Requirement already satisfied: contourpy>=1.0.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (1.2.0)\r\n",
+      "Requirement already satisfied: cycler>=0.10 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (0.12.1)\r\n",
+      "Requirement already satisfied: fonttools>=4.22.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (4.47.0)\r\n",
+      "Requirement already satisfied: kiwisolver>=1.0.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (1.4.5)\r\n",
+      "Requirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (21.3)\r\n",
+      "Requirement already satisfied: pillow>=6.2.0 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (9.5.0)\r\n",
+      "Requirement already satisfied: pyparsing>=2.3.1 in /opt/conda/lib/python3.10/site-packages (from matplotlib->catboost) (3.1.1)\r\n",
+      "Requirement already satisfied: tenacity>=6.2.0 in /opt/conda/lib/python3.10/site-packages (from plotly->catboost) (8.2.3)\r\n",
+      "\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\r\n",
+      "\u001b[0mRequirement already satisfied: optuna in /opt/conda/lib/python3.10/site-packages (3.6.1)\r\n",
+      "Requirement already satisfied: alembic>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (1.13.1)\r\n",
+      "Requirement already satisfied: colorlog in /opt/conda/lib/python3.10/site-packages (from optuna) (6.8.2)\r\n",
+      "Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from optuna) (1.26.4)\r\n",
+      "Requirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (21.3)\r\n",
+      "Requirement already satisfied: sqlalchemy>=1.3.0 in /opt/conda/lib/python3.10/site-packages (from optuna) (2.0.25)\r\n",
+      "Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from optuna) (4.66.4)\r\n",
+      "Requirement already satisfied: PyYAML in /opt/conda/lib/python3.10/site-packages (from optuna) (6.0.1)\r\n",
+      "Requirement already satisfied: Mako in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna) (1.3.5)\r\n",
+      "Requirement already satisfied: typing-extensions>=4 in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna) (4.9.0)\r\n",
+      "Requirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging>=20.0->optuna) (3.1.1)\r\n",
+      "Requirement already satisfied: greenlet!=0.4.17 in /opt/conda/lib/python3.10/site-packages (from sqlalchemy>=1.3.0->optuna) (3.0.3)\r\n",
+      "Requirement already satisfied: MarkupSafe>=0.9.2 in /opt/conda/lib/python3.10/site-packages (from Mako->alembic>=1.5.0->optuna) (2.1.3)\r\n",
+      "\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\r\n",
+      "\u001b[0mCollecting optuna_distributed\r\n",
+      "  Downloading optuna_distributed-0.6.2-py3-none-any.whl.metadata (5.1 kB)\r\n",
+      "Requirement already satisfied: optuna>=3.1.0 in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (3.6.1)\r\n",
+      "Requirement already satisfied: dask[distributed] in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (2024.5.1)\r\n",
+      "Requirement already satisfied: rich in /opt/conda/lib/python3.10/site-packages (from optuna_distributed) (13.7.0)\r\n",
+      "Requirement already satisfied: alembic>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (1.13.1)\r\n",
+      "Requirement already satisfied: colorlog in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (6.8.2)\r\n",
+      "Requirement already satisfied: numpy in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (1.26.4)\r\n",
+      "Requirement already satisfied: packaging>=20.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (21.3)\r\n",
+      "Requirement already satisfied: sqlalchemy>=1.3.0 in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (2.0.25)\r\n",
+      "Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (4.66.4)\r\n",
+      "Requirement already satisfied: PyYAML in /opt/conda/lib/python3.10/site-packages (from optuna>=3.1.0->optuna_distributed) (6.0.1)\r\n",
+      "Requirement already satisfied: click>=8.1 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (8.1.7)\r\n",
+      "Requirement already satisfied: cloudpickle>=1.5.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (2.2.1)\r\n",
+      "Requirement already satisfied: fsspec>=2021.09.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (2024.3.1)\r\n",
+      "Requirement already satisfied: partd>=1.2.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (1.4.2)\r\n",
+      "Requirement already satisfied: toolz>=0.10.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (0.12.1)\r\n",
+      "Requirement already satisfied: importlib-metadata>=4.13.0 in /opt/conda/lib/python3.10/site-packages (from dask[distributed]->optuna_distributed) (6.11.0)\r\n",
+      "Collecting distributed==2024.5.1 (from dask[distributed]->optuna_distributed)\r\n",
+      "  Downloading distributed-2024.5.1-py3-none-any.whl.metadata (3.4 kB)\r\n",
+      "Requirement already satisfied: jinja2>=2.10.3 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (3.1.2)\r\n",
+      "Requirement already satisfied: locket>=1.0.0 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.0.0)\r\n",
+      "Requirement already satisfied: msgpack>=1.0.0 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.0.7)\r\n",
+      "Requirement already satisfied: psutil>=5.7.2 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (5.9.3)\r\n",
+      "Collecting sortedcontainers>=2.0.5 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\r\n",
+      "  Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl.metadata (10 kB)\r\n",
+      "Collecting tblib>=1.6.0 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\r\n",
+      "  Downloading tblib-3.0.0-py3-none-any.whl.metadata (25 kB)\r\n",
+      "Requirement already satisfied: tornado>=6.0.4 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (6.3.3)\r\n",
+      "Requirement already satisfied: urllib3>=1.24.3 in /opt/conda/lib/python3.10/site-packages (from distributed==2024.5.1->dask[distributed]->optuna_distributed) (1.26.18)\r\n",
+      "Collecting zict>=3.0.0 (from distributed==2024.5.1->dask[distributed]->optuna_distributed)\r\n",
+      "  Downloading zict-3.0.0-py2.py3-none-any.whl.metadata (899 bytes)\r\n",
+      "Requirement already satisfied: markdown-it-py>=2.2.0 in /opt/conda/lib/python3.10/site-packages (from rich->optuna_distributed) (3.0.0)\r\n",
+      "Requirement already satisfied: pygments<3.0.0,>=2.13.0 in /opt/conda/lib/python3.10/site-packages (from rich->optuna_distributed) (2.17.2)\r\n",
+      "Requirement already satisfied: Mako in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna>=3.1.0->optuna_distributed) (1.3.5)\r\n",
+      "Requirement already satisfied: typing-extensions>=4 in /opt/conda/lib/python3.10/site-packages (from alembic>=1.5.0->optuna>=3.1.0->optuna_distributed) (4.9.0)\r\n",
+      "Requirement already satisfied: zipp>=0.5 in /opt/conda/lib/python3.10/site-packages (from importlib-metadata>=4.13.0->dask[distributed]->optuna_distributed) (3.17.0)\r\n",
+      "Requirement already satisfied: mdurl~=0.1 in /opt/conda/lib/python3.10/site-packages (from markdown-it-py>=2.2.0->rich->optuna_distributed) (0.1.2)\r\n",
+      "Requirement already satisfied: pyparsing!=3.0.5,>=2.0.2 in /opt/conda/lib/python3.10/site-packages (from packaging>=20.0->optuna>=3.1.0->optuna_distributed) (3.1.1)\r\n",
+      "Requirement already satisfied: greenlet!=0.4.17 in /opt/conda/lib/python3.10/site-packages (from sqlalchemy>=1.3.0->optuna>=3.1.0->optuna_distributed) (3.0.3)\r\n",
+      "Requirement already satisfied: MarkupSafe>=2.0 in /opt/conda/lib/python3.10/site-packages (from jinja2>=2.10.3->distributed==2024.5.1->dask[distributed]->optuna_distributed) (2.1.3)\r\n",
+      "Downloading optuna_distributed-0.6.2-py3-none-any.whl (30 kB)\r\n",
+      "Downloading distributed-2024.5.1-py3-none-any.whl (1.0 MB)\r\n",
+      "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m1.0/1.0 MB\u001b[0m \u001b[31m20.5 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+      "\u001b[?25hDownloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)\r\n",
+      "Downloading tblib-3.0.0-py3-none-any.whl (12 kB)\r\n",
+      "Downloading zict-3.0.0-py2.py3-none-any.whl (43 kB)\r\n",
+      "\u001b[2K   \u001b[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\u001b[0m \u001b[32m43.3/43.3 kB\u001b[0m \u001b[31m2.1 MB/s\u001b[0m eta \u001b[36m0:00:00\u001b[0m\r\n",
+      "\u001b[?25h\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\r\n",
+      "\u001b[0mInstalling collected packages: sortedcontainers, zict, tblib, distributed, optuna_distributed\r\n",
+      "Successfully installed distributed-2024.5.1 optuna_distributed-0.6.2 sortedcontainers-2.4.0 tblib-3.0.0 zict-3.0.0\r\n",
+      "Collecting openfe\r\n",
+      "  Downloading openfe-0.0.12-py3-none-any.whl.metadata (667 bytes)\r\n",
+      "Requirement already satisfied: numpy>=1.19.3 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.26.4)\r\n",
+      "Requirement already satisfied: pandas>=1.1.5 in /opt/conda/lib/python3.10/site-packages (from openfe) (2.2.2)\r\n",
+      "Requirement already satisfied: scikit-learn>=0.24.2 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.4.0)\r\n",
+      "Requirement already satisfied: lightgbm>=3.3.2 in /opt/conda/lib/python3.10/site-packages (from openfe) (4.2.0)\r\n",
+      "Requirement already satisfied: scipy>=1.5.4 in /opt/conda/lib/python3.10/site-packages (from openfe) (1.11.4)\r\n",
+      "Requirement already satisfied: tqdm in /opt/conda/lib/python3.10/site-packages (from openfe) (4.66.4)\r\n",
+      "Requirement already satisfied: pyarrow in /opt/conda/lib/python3.10/site-packages (from openfe) (16.1.0)\r\n",
+      "Requirement already satisfied: python-dateutil>=2.8.2 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2.9.0.post0)\r\n",
+      "Requirement already satisfied: pytz>=2020.1 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2023.3.post1)\r\n",
+      "Requirement already satisfied: tzdata>=2022.7 in /opt/conda/lib/python3.10/site-packages (from pandas>=1.1.5->openfe) (2023.4)\r\n",
+      "Requirement already satisfied: joblib>=1.2.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn>=0.24.2->openfe) (1.4.2)\r\n",
+      "Requirement already satisfied: threadpoolctl>=2.0.0 in /opt/conda/lib/python3.10/site-packages (from scikit-learn>=0.24.2->openfe) (3.2.0)\r\n",
+      "Requirement already satisfied: six>=1.5 in /opt/conda/lib/python3.10/site-packages (from python-dateutil>=2.8.2->pandas>=1.1.5->openfe) (1.16.0)\r\n",
+      "Downloading openfe-0.0.12-py3-none-any.whl (21 kB)\r\n",
+      "\u001b[33mWARNING: Error parsing requirements for aiohttp: [Errno 2] No such file or directory: '/opt/conda/lib/python3.10/site-packages/aiohttp-3.9.1.dist-info/METADATA'\u001b[0m\u001b[33m\r\n",
+      "\u001b[0mInstalling collected packages: openfe\r\n",
+      "Successfully installed openfe-0.0.12\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!pip install catboost\n",
+    "!pip install optuna\n",
+    "!pip install optuna_distributed\n",
+    "!pip install openfe"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "bd31b137",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:29.930139Z",
+     "iopub.status.busy": "2024-06-01T10:01:29.929651Z",
+     "iopub.status.idle": "2024-06-01T10:01:42.635102Z",
+     "shell.execute_reply": "2024-06-01T10:01:42.634059Z"
+    },
+    "papermill": {
+     "duration": 12.722652,
+     "end_time": "2024-06-01T10:01:42.638012",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:29.915360",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "from fastai.tabular.all import *\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import numpy as np\n",
+    "from numpy import random\n",
+    "\n",
+    "from fastai.imports import *\n",
+    "np.set_printoptions(linewidth=130)\n",
+    "\n",
+    "\n",
+    "from pathlib import Path\n",
+    "import os\n",
+    "\n",
+    "\n",
+    "from sklearn.ensemble import RandomForestRegressor,RandomForestClassifier\n",
+    "from sklearn.metrics import roc_auc_score\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "from sklearn.metrics import mean_absolute_error,r2_score\n",
+    "#from sklearn.metrics import root_mean_squared_error\n",
+    "\n",
+    "import xgboost as xgb\n",
+    "from xgboost import plot_importance\n",
+    "\n",
+    "import lightgbm as lgb\n",
+    "\n",
+    "from catboost import CatBoostClassifier,CatBoostRegressor,Pool, metrics, cv\n",
+    "\n",
+    "from ipywidgets import interact\n",
+    "\n",
+    "\n",
+    "matplotlib.rc('image', cmap='Greys')\n",
+    "\n",
+    "#from fastkaggle import setup_comp\n",
+    "import optuna\n",
+    "import optuna_distributed\n",
+    "\n",
+    "from autogluon.tabular import TabularDataset, TabularPredictor"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "506e517b",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012326,
+     "end_time": "2024-06-01T10:01:42.662429",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:42.650103",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Read In Datasets"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "97d34ee4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:42.690143Z",
+     "iopub.status.busy": "2024-06-01T10:01:42.688715Z",
+     "iopub.status.idle": "2024-06-01T10:01:43.814120Z",
+     "shell.execute_reply": "2024-06-01T10:01:43.812822Z"
+    },
+    "papermill": {
+     "duration": 1.142021,
+     "end_time": "2024-06-01T10:01:43.817094",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:42.675073",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "sample_submission.csv  test.csv  train.csv\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls /kaggle/input/playground-series-s4e6"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "c0f6b1a4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:43.845403Z",
+     "iopub.status.busy": "2024-06-01T10:01:43.844964Z",
+     "iopub.status.idle": "2024-06-01T10:01:43.854728Z",
+     "shell.execute_reply": "2024-06-01T10:01:43.853457Z"
+    },
+    "papermill": {
+     "duration": 0.02828,
+     "end_time": "2024-06-01T10:01:43.857252",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:43.828972",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "Path('/kaggle/input/playground-series-s4e6')"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "path = Path('/kaggle/input/playground-series-s4e6/')\n",
+    "path"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "241bc542",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:43.884682Z",
+     "iopub.status.busy": "2024-06-01T10:01:43.883989Z",
+     "iopub.status.idle": "2024-06-01T10:01:45.001802Z",
+     "shell.execute_reply": "2024-06-01T10:01:44.999591Z"
+    },
+    "papermill": {
+     "duration": 1.13527,
+     "end_time": "2024-06-01T10:01:45.005176",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:43.869906",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "data.csv\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls /kaggle/input/academic-success-dataset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "869fb2ce",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:45.032212Z",
+     "iopub.status.busy": "2024-06-01T10:01:45.031632Z",
+     "iopub.status.idle": "2024-06-01T10:01:45.921263Z",
+     "shell.execute_reply": "2024-06-01T10:01:45.919688Z"
+    },
+    "papermill": {
+     "duration": 0.907102,
+     "end_time": "2024-06-01T10:01:45.924555",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:45.017453",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "train_df = pd.read_csv(path/'train.csv',index_col='id')\n",
+    "test_df = pd.read_csv(path/'test.csv',index_col='id')\n",
+    "sub_df = pd.read_csv(path/'sample_submission.csv',index_col='id')\n",
+    "original_df = pd.read_csv('/kaggle/input/academic-success-dataset/data.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "5b9c574b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:45.956062Z",
+     "iopub.status.busy": "2024-06-01T10:01:45.955524Z",
+     "iopub.status.idle": "2024-06-01T10:01:45.978641Z",
+     "shell.execute_reply": "2024-06-01T10:01:45.977281Z"
+    },
+    "papermill": {
+     "duration": 0.041688,
+     "end_time": "2024-06-01T10:01:45.982151",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:45.940463",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "train_final = pd.concat([train_df,original_df], axis=0)\n",
+    "#test_final = pd.concat([test_df,original_df.drop('Target')],axis=0)\n",
+    "#train_final.shape,test_final.shape"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9f848f13",
+   "metadata": {
+    "papermill": {
+     "duration": 0.012426,
+     "end_time": "2024-06-01T10:01:46.007550",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:45.995124",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# AutoGluon Baseline"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "2ce82e50",
+   "metadata": {
+    "_kg_hide-output": true,
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:01:46.035640Z",
+     "iopub.status.busy": "2024-06-01T10:01:46.035148Z",
+     "iopub.status.idle": "2024-06-01T10:07:43.870374Z",
+     "shell.execute_reply": "2024-06-01T10:07:43.868733Z"
+    },
+    "papermill": {
+     "duration": 357.852822,
+     "end_time": "2024-06-01T10:07:43.873142",
+     "exception": false,
+     "start_time": "2024-06-01T10:01:46.020320",
+     "status": "completed"
+    },
+    "scrolled": true,
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "No path specified. Models will be saved in: \"AutogluonModels/ag-20240601_100146\"\n",
+      "No presets specified! To achieve strong results with AutoGluon, it is recommended to use the available presets.\n",
+      "\tRecommended Presets (For more details refer to https://auto.gluon.ai/stable/tutorials/tabular/tabular-essentials.html#presets):\n",
+      "\tpresets='best_quality'   : Maximize accuracy. Default time_limit=3600.\n",
+      "\tpresets='high_quality'   : Strong accuracy with fast inference speed. Default time_limit=3600.\n",
+      "\tpresets='good_quality'   : Good accuracy with very fast inference speed. Default time_limit=3600.\n",
+      "\tpresets='medium_quality' : Fast training time, ideal for initial prototyping.\n",
+      "Beginning AutoGluon training ...\n",
+      "AutoGluon will save models to \"AutogluonModels/ag-20240601_100146\"\n",
+      "=================== System Info ===================\n",
+      "AutoGluon Version:  1.1.0\n",
+      "Python Version:     3.10.13\n",
+      "Operating System:   Linux\n",
+      "Platform Machine:   x86_64\n",
+      "Platform Version:   #1 SMP Tue Dec 19 13:14:11 UTC 2023\n",
+      "CPU Count:          4\n",
+      "Memory Avail:       30.07 GB / 31.36 GB (95.9%)\n",
+      "Disk Space Avail:   19.50 GB / 19.52 GB (99.9%)\n",
+      "===================================================\n",
+      "Train Data Rows:    76518\n",
+      "Train Data Columns: 36\n",
+      "Label Column:       Target\n",
+      "AutoGluon infers your prediction problem is: 'multiclass' (because dtype of label-column == object).\n",
+      "\t3 unique label values:  ['Graduate', 'Dropout', 'Enrolled']\n",
+      "\tIf 'multiclass' is not the correct problem_type, please manually specify the problem_type parameter during predictor init (You may specify problem_type as one of: ['binary', 'multiclass', 'regression'])\n",
+      "Problem Type:       multiclass\n",
+      "Preprocessing data ...\n",
+      "Train Data Class Count: 3\n",
+      "Using Feature Generators to preprocess the data ...\n",
+      "Fitting AutoMLPipelineFeatureGenerator...\n",
+      "\tAvailable Memory:                    30782.91 MB\n",
+      "\tTrain Data (Original)  Memory Usage: 21.02 MB (0.1% of available memory)\n",
+      "\tInferring data type of each feature based on column values. Set feature_metadata_in to manually specify special dtypes of the features.\n",
+      "\tStage 1 Generators:\n",
+      "\t\tFitting AsTypeFeatureGenerator...\n",
+      "\t\t\tNote: Converting 8 features to boolean dtype as they only contain 2 unique values.\n",
+      "\tStage 2 Generators:\n",
+      "\t\tFitting FillNaFeatureGenerator...\n",
+      "\tStage 3 Generators:\n",
+      "\t\tFitting IdentityFeatureGenerator...\n",
+      "\tStage 4 Generators:\n",
+      "\t\tFitting DropUniqueFeatureGenerator...\n",
+      "\tStage 5 Generators:\n",
+      "\t\tFitting DropDuplicatesFeatureGenerator...\n",
+      "\tTypes of features in original data (raw dtype, special dtypes):\n",
+      "\t\t('float', []) :  7 | ['Previous qualification (grade)', 'Admission grade', 'Curricular units 1st sem (grade)', 'Curricular units 2nd sem (grade)', 'Unemployment rate', ...]\n",
+      "\t\t('int', [])   : 29 | ['Marital status', 'Application mode', 'Application order', 'Course', 'Daytime/evening attendance', ...]\n",
+      "\tTypes of features in processed data (raw dtype, special dtypes):\n",
+      "\t\t('float', [])     :  7 | ['Previous qualification (grade)', 'Admission grade', 'Curricular units 1st sem (grade)', 'Curricular units 2nd sem (grade)', 'Unemployment rate', ...]\n",
+      "\t\t('int', [])       : 21 | ['Marital status', 'Application mode', 'Application order', 'Course', 'Previous qualification', ...]\n",
+      "\t\t('int', ['bool']) :  8 | ['Daytime/evening attendance', 'Displaced', 'Educational special needs', 'Debtor', 'Tuition fees up to date', ...]\n",
+      "\t0.4s = Fit runtime\n",
+      "\t36 features in original data used to generate 36 features in processed data.\n",
+      "\tTrain Data (Processed) Memory Usage: 16.93 MB (0.1% of available memory)\n",
+      "Data preprocessing and feature engineering runtime = 0.61s ...\n",
+      "AutoGluon will gauge predictive performance using evaluation metric: 'accuracy'\n",
+      "\tTo change this, specify the eval_metric parameter of Predictor()\n",
+      "Automatically generating train/validation split with holdout_frac=0.03267205102067487, Train Rows: 74018, Val Rows: 2500\n",
+      "User-specified model hyperparameters to be fit:\n",
+      "{\n",
+      "\t'NN_TORCH': {},\n",
+      "\t'GBM': [{'extra_trees': True, 'ag_args': {'name_suffix': 'XT'}}, {}, 'GBMLarge'],\n",
+      "\t'CAT': {},\n",
+      "\t'XGB': {},\n",
+      "\t'FASTAI': {},\n",
+      "\t'RF': [{'criterion': 'gini', 'ag_args': {'name_suffix': 'Gini', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'entropy', 'ag_args': {'name_suffix': 'Entr', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'squared_error', 'ag_args': {'name_suffix': 'MSE', 'problem_types': ['regression', 'quantile']}}],\n",
+      "\t'XT': [{'criterion': 'gini', 'ag_args': {'name_suffix': 'Gini', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'entropy', 'ag_args': {'name_suffix': 'Entr', 'problem_types': ['binary', 'multiclass']}}, {'criterion': 'squared_error', 'ag_args': {'name_suffix': 'MSE', 'problem_types': ['regression', 'quantile']}}],\n",
+      "\t'KNN': [{'weights': 'uniform', 'ag_args': {'name_suffix': 'Unif'}}, {'weights': 'distance', 'ag_args': {'name_suffix': 'Dist'}}],\n",
+      "}\n",
+      "Fitting 13 L1 models ...\n",
+      "Fitting model: KNeighborsUnif ...\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.fit: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: fallback to original Scikit-learn\n",
+      "INFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.predict_proba: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "\t0.7172\t = Validation score   (accuracy)\n",
+      "\t0.82s\t = Training   runtime\n",
+      "\t0.25s\t = Validation runtime\n",
+      "Fitting model: KNeighborsDist ...\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.fit: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: fallback to original Scikit-learn\n",
+      "INFO:sklearnex: sklearn.neighbors.KNeighborsClassifier.predict_proba: running accelerated version on CPU\n",
+      "INFO:sklearnex: sklearn.utils.validation._assert_all_finite: running accelerated version on CPU\n",
+      "\t0.7068\t = Validation score   (accuracy)\n",
+      "\t0.07s\t = Training   runtime\n",
+      "\t0.22s\t = Validation runtime\n",
+      "Fitting model: NeuralNetFastAI ...\n",
+      "\t0.8248\t = Validation score   (accuracy)\n",
+      "\t108.51s\t = Training   runtime\n",
+      "\t0.07s\t = Validation runtime\n",
+      "Fitting model: LightGBMXT ...\n",
+      "\t0.8272\t = Validation score   (accuracy)\n",
+      "\t8.55s\t = Training   runtime\n",
+      "\t0.04s\t = Validation runtime\n",
+      "Fitting model: LightGBM ...\n",
+      "\t0.8308\t = Validation score   (accuracy)\n",
+      "\t10.54s\t = Training   runtime\n",
+      "\t0.06s\t = Validation runtime\n",
+      "Fitting model: RandomForestGini ...\n",
+      "\t0.826\t = Validation score   (accuracy)\n",
+      "\t26.51s\t = Training   runtime\n",
+      "\t0.21s\t = Validation runtime\n",
+      "Fitting model: RandomForestEntr ...\n",
+      "\t0.8244\t = Validation score   (accuracy)\n",
+      "\t26.0s\t = Training   runtime\n",
+      "\t0.2s\t = Validation runtime\n",
+      "Fitting model: CatBoost ...\n",
+      "\t0.8276\t = Validation score   (accuracy)\n",
+      "\t26.31s\t = Training   runtime\n",
+      "\t0.01s\t = Validation runtime\n",
+      "Fitting model: ExtraTreesGini ...\n",
+      "\t0.8216\t = Validation score   (accuracy)\n",
+      "\t18.06s\t = Training   runtime\n",
+      "\t0.21s\t = Validation runtime\n",
+      "Fitting model: ExtraTreesEntr ...\n",
+      "\t0.822\t = Validation score   (accuracy)\n",
+      "\t18.2s\t = Training   runtime\n",
+      "\t0.24s\t = Validation runtime\n",
+      "Fitting model: XGBoost ...\n",
+      "\t0.8296\t = Validation score   (accuracy)\n",
+      "\t5.04s\t = Training   runtime\n",
+      "\t0.03s\t = Validation runtime\n",
+      "Fitting model: NeuralNetTorch ...\n",
+      "\t0.8228\t = Validation score   (accuracy)\n",
+      "\t91.19s\t = Training   runtime\n",
+      "\t0.04s\t = Validation runtime\n",
+      "Fitting model: LightGBMLarge ...\n",
+      "\t0.8224\t = Validation score   (accuracy)\n",
+      "\t8.21s\t = Training   runtime\n",
+      "\t0.02s\t = Validation runtime\n",
+      "Fitting model: WeightedEnsemble_L2 ...\n",
+      "\tEnsemble Weights: {'LightGBM': 0.833, 'ExtraTreesGini': 0.167}\n",
+      "\t0.8312\t = Validation score   (accuracy)\n",
+      "\t0.32s\t = Training   runtime\n",
+      "\t0.0s\t = Validation runtime\n",
+      "AutoGluon training complete, total runtime = 357.31s ... Best model: \"WeightedEnsemble_L2\"\n",
+      "TabularPredictor saved. To load, use: predictor = TabularPredictor.load(\"AutogluonModels/ag-20240601_100146\")\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 14min 8s, sys: 13.6 s, total: 14min 21s\n",
+      "Wall time: 5min 57s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "predictor = TabularPredictor(label='Target').fit(train_data=train_df)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "93a40573",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:43.922667Z",
+     "iopub.status.busy": "2024-06-01T10:07:43.921525Z",
+     "iopub.status.idle": "2024-06-01T10:07:48.497587Z",
+     "shell.execute_reply": "2024-06-01T10:07:48.495721Z"
+    },
+    "papermill": {
+     "duration": 4.60476,
+     "end_time": "2024-06-01T10:07:48.500834",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:43.896074",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 9.6 s, sys: 1.36 s, total: 11 s\n",
+      "Wall time: 4.57 s\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "predictions = predictor.predict(test_df)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "069bf820",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:48.555235Z",
+     "iopub.status.busy": "2024-06-01T10:07:48.554359Z",
+     "iopub.status.idle": "2024-06-01T10:07:48.561897Z",
+     "shell.execute_reply": "2024-06-01T10:07:48.560736Z"
+    },
+    "papermill": {
+     "duration": 0.036409,
+     "end_time": "2024-06-01T10:07:48.564246",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:48.527837",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(51012,)"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "predictions.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "82bc554c",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:48.615027Z",
+     "iopub.status.busy": "2024-06-01T10:07:48.613429Z",
+     "iopub.status.idle": "2024-06-01T10:07:55.498286Z",
+     "shell.execute_reply": "2024-06-01T10:07:55.496794Z"
+    },
+    "papermill": {
+     "duration": 6.91356,
+     "end_time": "2024-06-01T10:07:55.501657",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:48.588097",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 15.5 s, sys: 1.26 s, total: 16.8 s\n",
+      "Wall time: 6.87 s\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'accuracy': 0.8688151807417862,\n",
+       " 'balanced_accuracy': 0.8343605656028368,\n",
+       " 'mcc': 0.7901187688773824}"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "predictor.evaluate(train_df)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "c59cf12f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:55.552642Z",
+     "iopub.status.busy": "2024-06-01T10:07:55.552155Z",
+     "iopub.status.idle": "2024-06-01T10:07:55.558860Z",
+     "shell.execute_reply": "2024-06-01T10:07:55.557718Z"
+    },
+    "papermill": {
+     "duration": 0.035236,
+     "end_time": "2024-06-01T10:07:55.561388",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:55.526152",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 5 µs, sys: 0 ns, total: 5 µs\n",
+      "Wall time: 8.34 µs\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "#predictor.evaluate(test_df)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "7818cb22",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:55.613431Z",
+     "iopub.status.busy": "2024-06-01T10:07:55.612965Z",
+     "iopub.status.idle": "2024-06-01T10:07:55.619473Z",
+     "shell.execute_reply": "2024-06-01T10:07:55.618177Z"
+    },
+    "papermill": {
+     "duration": 0.036694,
+     "end_time": "2024-06-01T10:07:55.622648",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:55.585954",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "CPU times: user 3 µs, sys: 0 ns, total: 3 µs\n",
+      "Wall time: 8.58 µs\n"
+     ]
+    }
+   ],
+   "source": [
+    "%%time\n",
+    "#predictor.leaderboard(test_data)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "a24b4825",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:55.674723Z",
+     "iopub.status.busy": "2024-06-01T10:07:55.674199Z",
+     "iopub.status.idle": "2024-06-01T10:07:55.804080Z",
+     "shell.execute_reply": "2024-06-01T10:07:55.802812Z"
+    },
+    "papermill": {
+     "duration": 0.159447,
+     "end_time": "2024-06-01T10:07:55.806805",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:55.647358",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>id</th>\n",
+       "      <th>Target</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>76518</td>\n",
+       "      <td>Dropout</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>76519</td>\n",
+       "      <td>Graduate</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>76520</td>\n",
+       "      <td>Graduate</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>76521</td>\n",
+       "      <td>Enrolled</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>76522</td>\n",
+       "      <td>Enrolled</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "      id    Target\n",
+       "0  76518   Dropout\n",
+       "1  76519  Graduate\n",
+       "2  76520  Graduate\n",
+       "3  76521  Enrolled\n",
+       "4  76522  Enrolled"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "test_df['Target'] = predictions\n",
+    "test_df.to_csv('submission.csv', columns=['Target'], index=True)\n",
+    "\n",
+    "submission = pd.read_csv('submission.csv')\n",
+    "submission.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "bb9a64a5",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2024-06-01T10:07:55.859129Z",
+     "iopub.status.busy": "2024-06-01T10:07:55.857665Z",
+     "iopub.status.idle": "2024-06-01T10:07:56.995692Z",
+     "shell.execute_reply": "2024-06-01T10:07:56.993986Z"
+    },
+    "papermill": {
+     "duration": 1.167415,
+     "end_time": "2024-06-01T10:07:56.998825",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:55.831410",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "AutogluonModels  __notebook__.ipynb  submission.csv\r\n"
+     ]
+    }
+   ],
+   "source": [
+    "!ls"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "74b4405e",
+   "metadata": {
+    "papermill": {
+     "duration": 0.023594,
+     "end_time": "2024-06-01T10:07:57.047294",
+     "exception": false,
+     "start_time": "2024-06-01T10:07:57.023700",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "databundleVersionId": 8710574,
+     "sourceId": 73290,
+     "sourceType": "competition"
+    },
+    {
+     "datasetId": 5127429,
+     "sourceId": 8574851,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 30715,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.13"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 493.943064,
+   "end_time": "2024-06-01T10:07:59.443268",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2024-06-01T09:59:45.500204",
+   "version": "2.5.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
