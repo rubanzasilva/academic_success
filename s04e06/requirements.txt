@@ -247,6 +247,7 @@ opt-einsum==3.3.0
 optimum==1.18.1
 optuna==3.6.1
 optuna-distributed==0.6.2
+optuna-integration==3.6.0
 ordered-set==4.1.0
 orjson==3.10.3
 overrides==7.7.0
